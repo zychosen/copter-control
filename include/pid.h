@@ -26,7 +26,6 @@ private:
         double derivative;
         double previousReading;
         double previousError;
-        double lastOutput;
         unsigned long lastTime;
 
         double *output;
