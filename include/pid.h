@@ -25,6 +25,7 @@ private:
         double integral;
         double derivative;
         double previousReading;
+        double previousError;
         double lastOutput;
         unsigned long lastTime;
 

@@ -5,12 +5,12 @@ PID::PID(double *Input, double * out, double *sp, double kp, double ki, double k
     input = Input;
     setpoint = sp;
     beta = 0.2;
-    PID::limitOutput(0,255);
     T = sampleTime;
     PID::SetGains(kp, ki, kd, beta);
     integral = 0.0;
 
 	previousReading = 0.0;
+    previousError = 0.0;
     lastOutput = 0.0;
 
 	output = out;
@@ -30,11 +30,9 @@ void PID::compute() {
 
     proportional = Kp*error;
     integral += Ki*error;
-    
-    if (integral > max) integral = max;
+    if (integral > 245) integral = 245;
     else if (integral < min) integral = min;
-
-    derivative = -Kd*inDiff;
+    derivative = -Kd*(inDiff);
 
     out = (int) (proportional + integral + derivative);
 
@@ -47,6 +45,7 @@ void PID::compute() {
     *output = out;
     lastOutput = out;
     previousReading = in;
+    previousError = error;
     lastTime = now;
   } else return;
 

@@ -7,8 +7,8 @@
 #include <driver/gpio.h>
 #include "u8g2_esp32_hal.h"
 
-#define MOTOR_ENABLE GPIO_NUM_12
-#define PWM_PIN GPIO_NUM_13
+#define MOTOR_ENABLE 14
+#define PWM_PIN 13
 #define DAC_PWM DAC_CHANNEL_1
 #define DAC_ANGLE DAC_CHANNEL_2
 #define PIN_SDA gpio_num_t(21)
@@ -30,7 +30,7 @@ static TaskHandle_t task_adc_avg = NULL;
 static TaskHandle_t task_bluetooth = NULL;
 
 static int8_t angleInput = -90;
-static double Setpoint=110, Output, Kp=2.5, Kd=0.29, Ki=0.45; // 4 0.2 1
+static double Setpoint=80, Output, Kp=0.6, Kd=0.1, Ki=0.6; // 4 0.2 1 // 2.5 0.29 0.45 // 170 26000 0.0625
 static double adcVal, beta = 0.2;
 
 PID myPID(&adcVal, &Output, &Setpoint, Kp, Ki, Kd, 1);
@@ -48,7 +48,7 @@ static hw_timer_t *timer2 = NULL;
 static const uint16_t timer_divider = 80;
 static const uint64_t timer_max_count = 1000;
 
-enum { BUF_LEN = 50 };  
+enum { BUF_LEN = 32 };  
 static volatile uint16_t buf_0[BUF_LEN];     
 static volatile uint16_t buf_1[BUF_LEN];      
 static volatile uint16_t* write_to = buf_0;   
@@ -56,9 +56,9 @@ static volatile uint16_t* read_from = buf_1;
 static volatile uint8_t buf_overrun = 0; 
 static SemaphoreHandle_t sem_done_reading = NULL;
 
-const uint16_t freq = 1000;
+const uint16_t freq = 2000;
 const uint8_t ledChannel = 0;
-const uint8_t resolution = 16;
+const uint8_t resolution = 8;
 
 void IRAM_ATTR swap() {
   volatile uint16_t* temp_ptr = write_to;
@@ -69,9 +69,8 @@ void IRAM_ATTR swap() {
 void IRAM_ATTR onTimer() {
     BaseType_t task_woken = pdFALSE;
     myPID.compute();
-    gpio_set_level(MOTOR_ENABLE, 1);
+    GPIO.out_w1ts = 1 << MOTOR_ENABLE;
     ledcWrite(ledChannel, Output);
-    dac_output_voltage(DAC_PWM, Output);
     vTaskNotifyGiveFromISR(task_bluetooth, &task_woken);
 
     if (task_woken) {
@@ -116,15 +115,13 @@ void avgADC(void *params) {
             avg += (float)read_from[i];
         }
         avg /= BUF_LEN;
-        x = map(avg, 100, 640, 0, 255);
+        x = map(avg, 80, 640, 0, 255);
         dac_output_voltage(DAC_ANGLE, x);
         portENTER_CRITICAL(&spinlock);
         adcVal = avg;
         buf_overrun = 0;
         xSemaphoreGive(sem_done_reading);
         portEXIT_CRITICAL(&spinlock);
-
-        vTaskDelay(5 / portTICK_PERIOD_MS);
     }
 }
 
@@ -176,7 +173,8 @@ void listen(void *params){
 
         x : angle_dup = angle;
         portENTER_CRITICAL(&spinlock);
-        Setpoint = 430 + angle*3.67;
+        Setpoint = 430 + angle*3.88;
+        dac_output_voltage(DAC_PWM, map(Setpoint, 80, 640, 0, 255));
         angleInput = angle;
         portEXIT_CRITICAL(&spinlock);
         memset(buf, 0, len);
@@ -215,7 +213,7 @@ void OLED(void *ignore) {
     sprintf(Beta, "%0.2f", myPID.GetBeta());
     portEXIT_CRITICAL(&spinlock);
     
-    adc = 0.272*(adc - 430);
+    adc = 0.257*(adc - 430);
     
     u8g2_ClearBuffer(&u8g2);
     u8g2_SetFont(&u8g2, u8g2_font_t0_11b_me);
@@ -271,11 +269,11 @@ void setup() {
   adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);
   dac_output_enable(DAC_PWM);
   dac_output_enable(DAC_ANGLE);
-
   ledcSetup(ledChannel, freq, resolution);
-  gpio_set_direction(MOTOR_ENABLE, GPIO_MODE_OUTPUT);
-  gpio_set_direction(PWM_PIN, GPIO_MODE_OUTPUT);
   ledcAttachPin(PWM_PIN, ledChannel);
+
+  pinMode(MOTOR_ENABLE, OUTPUT);
+  pinMode(PWM_PIN, OUTPUT);
 
   sem_done_reading = xSemaphoreCreateBinary();
 
@@ -285,11 +283,11 @@ void setup() {
     }
 
   xSemaphoreGive(sem_done_reading);
-  myPID.limitOutput(0, 65535);
+  myPID.limitOutput(0, 255);
 
   xTaskCreatePinnedToCore(avgADC,
                           "ADC avg",
-                          2048,
+                          1024,
                           NULL,
                           1,
                           &task_adc_avg,
