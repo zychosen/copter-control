@@ -1,7 +1,7 @@
 #include "pid.h"
 #include <Arduino.h>
 
-PID::PID(double *Input, double * out, double *sp, double kp, double ki, double kd, int sampleTime) {
+PID::PID(float *Input, float * out, float *sp, float kp, float ki, float kd, int sampleTime) {
     input = Input;
     setpoint = sp;
     beta = 0.2;
@@ -11,7 +11,6 @@ PID::PID(double *Input, double * out, double *sp, double kp, double ki, double k
 
 	previousReading = 0.0;
     previousError = 0.0;
-    lastOutput = 0.0;
 
 	output = out;
     lastTime = millis() - T;
@@ -21,11 +20,11 @@ void PID::compute() {
 
     unsigned long now = millis();
     unsigned long timeChange = (now - lastTime);
-    double proportional;
+    float proportional;
     if(timeChange >= T)
    {
-    double out, in = *input, sp = *setpoint;
-    double inDiff = in - previousReading;
+    float out, in = *input, sp = *setpoint;
+    float inDiff = in - previousReading;
     int16_t error = sp - in;
 
     proportional = Kp*error;
@@ -43,7 +42,6 @@ void PID::compute() {
     }
     
     *output = out;
-    lastOutput = out;
     previousReading = in;
     previousError = error;
     lastTime = now;
@@ -51,18 +49,18 @@ void PID::compute() {
 
 }
 
-void PID::SetGains(double kp, double ki, double kd, double b) {
+void PID::SetGains(float kp, float ki, float kd, float b) {
     if (Kp<0 || Ki<0|| Kd<0 || beta<0 || beta>1) return;
     beta = b;
 
     kp_d = kp; ki_d = ki; kd_d = kd;
-    double s =  (double)T/1000;
+    float s =  (float)T/1000;
     Kp = kp;
     Kd = kd/s;
     Ki = ki*s;
 }
 
-void PID::limitOutput(double Min, double Max) {
+void PID::limitOutput(float Min, float Max) {
     if(Min >= Max) return;
     min = Min;
     max = Max;

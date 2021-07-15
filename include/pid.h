@@ -6,34 +6,34 @@
 class PID {
 
 private:
-        double *input;
-        double *setpoint;
+        float *input;
+        float *setpoint;
 
-        double Kp;
-        double Ki;
-        double Kd;
+        float Kp;
+        float Ki;
+        float Kd;
 
-        double kp_d, ki_d, kd_d;
+        float kp_d, ki_d, kd_d;
 
-        double min;
-        double max;
-        double beta;
+        float min;
+        float max;
+        float beta;
         
 
-        double T;
+        float T;
 
-        double integral;
-        double derivative;
-        double previousReading;
-        double previousError;
+        float integral;
+        float derivative;
+        float previousReading;
+        float previousError;
         unsigned long lastTime;
 
-        double *output;
+        float *output;
 public:
-    PID(double *, double *, double *, double, double, double, int);
+    PID(float *, float *, float *, float, float, float, int);
     void compute();
-    void SetGains(double , double , double, double);
-    void limitOutput(double , double);
+    void SetGains(float , float , float, float);
+    void limitOutput(float , float);
     float GetKp();
     float GetKi();
     float GetKd();

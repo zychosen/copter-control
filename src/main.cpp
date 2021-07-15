@@ -27,11 +27,10 @@ BluetoothSerial SerialBT;
 static portMUX_TYPE spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 static TaskHandle_t task_adc_avg = NULL;
-static TaskHandle_t task_bluetooth = NULL;
 
 static int8_t angleInput = -90;
-static double Setpoint=80, Output, Kp=0.6, Kd=0.1, Ki=0.6; // 4 0.2 1 // 2.5 0.29 0.45 // 170 26000 0.0625
-static double adcVal, beta = 0.2;
+static float Setpoint=80, Output, Kp=0.6, Kd=0.1, Ki=0.6; // 4 0.2 1 // 2.5 0.29 0.45 // 170 26000 0.0625
+static float adcVal, beta = 0.2;
 
 PID myPID(&adcVal, &Output, &Setpoint, Kp, Ki, Kd, 1);
 
@@ -43,12 +42,11 @@ static const char ki[] = "ki ";
 static const char b[] = "beta ";
 static int8_t angle_dup = -90;
 
-static hw_timer_t *timer = NULL;
 static hw_timer_t *timer2 = NULL;
 static const uint16_t timer_divider = 80;
 static const uint64_t timer_max_count = 1000;
 
-enum { BUF_LEN = 32 };  
+enum { BUF_LEN = 30 };  
 static volatile uint16_t buf_0[BUF_LEN];     
 static volatile uint16_t buf_1[BUF_LEN];      
 static volatile uint16_t* write_to = buf_0;   
@@ -64,18 +62,6 @@ void IRAM_ATTR swap() {
   volatile uint16_t* temp_ptr = write_to;
   write_to = read_from;
   read_from = temp_ptr;
-}
-
-void IRAM_ATTR onTimer() {
-    BaseType_t task_woken = pdFALSE;
-    myPID.compute();
-    GPIO.out_w1ts = 1 << MOTOR_ENABLE;
-    ledcWrite(ledChannel, Output);
-    vTaskNotifyGiveFromISR(task_bluetooth, &task_woken);
-
-    if (task_woken) {
-    portYIELD_FROM_ISR();
-  }
 }
 
 void IRAM_ATTR onTimer2() {
@@ -122,6 +108,12 @@ void avgADC(void *params) {
         buf_overrun = 0;
         xSemaphoreGive(sem_done_reading);
         portEXIT_CRITICAL(&spinlock);
+        portENTER_CRITICAL(&spinlock);
+        myPID.compute();
+        GPIO.out_w1ts = 1 << MOTOR_ENABLE;
+        ledcWrite(ledChannel, Output);
+        portEXIT_CRITICAL(&spinlock);
+        
     }
 }
 
@@ -132,7 +124,6 @@ void listen(void *params){
   uint8_t idx = 0;                       
   memset(buf, 0, len);               
     while (1) {
-      ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
       if (SerialBT.available() > 0) {
         c = SerialBT.read();
 
@@ -186,6 +177,7 @@ void listen(void *params){
         idx++;
       }
     }
+    vTaskDelay(2/portTICK_PERIOD_MS);
   }
 }
 
@@ -298,7 +290,7 @@ void setup() {
                           1024,
                           NULL,
                           1,
-                          &task_bluetooth,
+                          NULL,
                           0);
 
   xTaskCreatePinnedToCore(OLED,
@@ -309,11 +301,6 @@ void setup() {
                           NULL,
                           0);
   
-  timer = timerBegin(0, timer_divider, true);
-  timerAttachInterrupt(timer, &onTimer, true);
-  timerAlarmWrite(timer, timer_max_count, true);
-  timerAlarmEnable(timer);
-
   timer2 = timerBegin(1, 80, true);
   timerAttachInterrupt(timer2, &onTimer2, true);
   timerAlarmWrite(timer2, 30, true);
