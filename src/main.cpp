@@ -153,7 +153,6 @@ void listen(void *params){
         } 
           else {
             angle = atoi(buf);
-<<<<<<< HEAD
             if (angle > 50 || angle < -90){
 		          SerialBT.println ("Angle out of range");
               angle = angle_dup;
@@ -161,14 +160,6 @@ void listen(void *params){
             else{
 		            angle_dup = angle;
 	          }
-=======
-	    if (angle>50 ||angle<-90){
-		    SerialBT.println("Angle out of range");
-	    }
-            else{
-		    angle_dup = angle;
-	    }
->>>>>>> 09b72644554814da768fb1e711e7ac5cee4b9dce
         }
 
         x : angle_dup = angle;
