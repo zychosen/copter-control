@@ -18,6 +18,10 @@ private:
         float min;
         float max;
         float beta;
+        float pOnEKp;
+        float pOnMKp;
+        bool pON_M;
+        bool pON_E;
         
 
         float T;

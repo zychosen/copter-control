@@ -4,7 +4,7 @@
 PID::PID(float *Input, float * out, float *sp, float kp, float ki, float kd, int sampleTime) {
     input = Input;
     setpoint = sp;
-    beta = 0.2;
+    beta = 0.55;
     T = sampleTime;
     PID::SetGains(kp, ki, kd, beta);
     integral = 0.0;
@@ -20,20 +20,27 @@ void PID::compute() {
 
     unsigned long now = millis();
     unsigned long timeChange = (now - lastTime);
-    float proportional;
     if(timeChange >= T)
    {
     float out, in = *input, sp = *setpoint;
     float inDiff = in - previousReading;
     int16_t error = sp - in;
-
-    proportional = Kp*error;
     integral += Ki*error;
-    if (integral > 245) integral = 245;
-    else if (integral < min) integral = min;
+
+    if (pON_M) integral -= pOnMKp*inDiff;
+
+    if (integral > 235) {
+        integral = 235;
+    } else if (integral < 0) {
+        integral = 0;
+    }
+
+    if (pON_E) out = pOnEKp*error;
+    else out = 0;
+
     derivative = -Kd*(inDiff);
 
-    out = (int) (proportional + integral + derivative);
+    out += (int)(integral + derivative);
 
     if (out > max) {
         out = max;
@@ -52,12 +59,16 @@ void PID::compute() {
 void PID::SetGains(float kp, float ki, float kd, float b) {
     if (Kp<0 || Ki<0|| Kd<0 || beta<0 || beta>1) return;
     beta = b;
+    pON_E = beta>0;
+    pON_M = beta<1;
 
     kp_d = kp; ki_d = ki; kd_d = kd;
     float s =  (float)T/1000;
     Kp = kp;
     Kd = kd/s;
     Ki = ki*s;
+    pOnEKp = beta * kp; 
+    pOnMKp = (1 - beta) * kp;
 }
 
 void PID::limitOutput(float Min, float Max) {

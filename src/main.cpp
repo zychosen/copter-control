@@ -14,10 +14,6 @@
 #define PIN_SDA gpio_num_t(21)
 #define PIN_SCL gpio_num_t(22)
 
-#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
-#error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
-#endif
-
 #ifdef U8X8_HAVE_HW_I2C
 #include <Wire.h>
 #endif
@@ -29,8 +25,8 @@ static portMUX_TYPE spinlock = portMUX_INITIALIZER_UNLOCKED;
 static TaskHandle_t task_adc_avg = NULL;
 
 static int8_t angleInput = -90;
-static float Setpoint=80, Output, Kp=0.6, Kd=0.1, Ki=0.6; // 4 0.2 1 // 2.5 0.29 0.45 // 170 26000 0.0625
-static float adcVal, beta = 0.2;
+static float Setpoint=80, Output, Kp=0.8, Kd=0.08, Ki=0.45; // 4 0.2 1 // 2.5 0.29 0.45 // 170 26000 0.0625
+static float adcVal, beta = 0.55;
 
 PID myPID(&adcVal, &Output, &Setpoint, Kp, Ki, Kd, 1);
 
@@ -42,11 +38,11 @@ static const char ki[] = "ki ";
 static const char b[] = "beta ";
 static int8_t angle_dup = -90;
 
-static hw_timer_t *timer2 = NULL;
+static hw_timer_t *timer = NULL;
 static const uint16_t timer_divider = 80;
-static const uint64_t timer_max_count = 1000;
+static const uint64_t timer_max_count = 50;
 
-enum { BUF_LEN = 30 };  
+enum { BUF_LEN = 16 };  
 static volatile uint16_t buf_0[BUF_LEN];     
 static volatile uint16_t buf_1[BUF_LEN];      
 static volatile uint16_t* write_to = buf_0;   
@@ -64,7 +60,7 @@ void IRAM_ATTR swap() {
   read_from = temp_ptr;
 }
 
-void IRAM_ATTR onTimer2() {
+void IRAM_ATTR onTimer() {
 
   static uint16_t idx = 0;
   BaseType_t task_woken = pdFALSE;
@@ -106,14 +102,12 @@ void avgADC(void *params) {
         portENTER_CRITICAL(&spinlock);
         adcVal = avg;
         buf_overrun = 0;
+        myPID.compute();
         xSemaphoreGive(sem_done_reading);
         portEXIT_CRITICAL(&spinlock);
-        portENTER_CRITICAL(&spinlock);
-        myPID.compute();
+
         GPIO.out_w1ts = 1 << MOTOR_ENABLE;
         ledcWrite(ledChannel, Output);
-        portEXIT_CRITICAL(&spinlock);
-        
     }
 }
 
@@ -159,15 +153,22 @@ void listen(void *params){
         } 
           else {
             angle = atoi(buf);
-            angle_dup = angle;
+            if (angle > 50 || angle < -90){
+		          SerialBT.println ("Angle out of range");
+              angle = angle_dup;
+	         }
+            else{
+		            angle_dup = angle;
+	          }
         }
 
         x : angle_dup = angle;
         portENTER_CRITICAL(&spinlock);
         Setpoint = 430 + angle*3.88;
-        dac_output_voltage(DAC_PWM, map(Setpoint, 80, 640, 0, 255));
-        angleInput = angle;
+        int y = map(Setpoint, 80, 640, 0, 255);
         portEXIT_CRITICAL(&spinlock);
+        dac_output_voltage(DAC_PWM, y);
+        angleInput = angle;
         memset(buf, 0, len);
         idx = 0;                   
       }
@@ -192,18 +193,17 @@ void OLED(void *ignore) {
   u8g2_SetPowerSave(&u8g2, 0);
 
   char kp[10], ki[10], kd[10], Beta[10];
-  memset(kp, 0, 10); memset(ki, 0, 10); memset(kd, 0, 10); memset(kd, 0, 10);
+  memset(kp, 0, 10); memset(ki, 0, 10); memset(kd, 0, 10); memset(Beta, 0, 10);
 
   while(1) {
     portENTER_CRITICAL(&spinlock);
     int16_t adc = adcVal;
     portEXIT_CRITICAL(&spinlock);
-    portENTER_CRITICAL(&spinlock);
+
     sprintf(kp, "%0.3f", myPID.GetKp()); 
     sprintf(ki, "%0.3f", myPID.GetKi());
     sprintf(kd, "%0.3f", myPID.GetKd());
     sprintf(Beta, "%0.2f", myPID.GetBeta());
-    portEXIT_CRITICAL(&spinlock);
     
     adc = 0.257*(adc - 430);
     
@@ -301,10 +301,10 @@ void setup() {
                           NULL,
                           0);
   
-  timer2 = timerBegin(1, 80, true);
-  timerAttachInterrupt(timer2, &onTimer2, true);
-  timerAlarmWrite(timer2, 30, true);
-  timerAlarmEnable(timer2);
+  timer = timerBegin(1, timer_divider, true);
+  timerAttachInterrupt(timer, &onTimer, true);
+  timerAlarmWrite(timer, timer_max_count, true);
+  timerAlarmEnable(timer);
   vTaskDelete(NULL);
 }
 
