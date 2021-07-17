@@ -159,7 +159,7 @@ void listen(void *params){
         } 
           else {
             angle = atoi(buf);
-	    if (angle>50 |angle<-90){
+	    if (angle>50 ||angle<-90){
 		    SerialBT.println("Angle out of range");
 	    }
             else{
