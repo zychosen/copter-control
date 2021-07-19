@@ -156,9 +156,8 @@ void listen(void *params){
             if (angle > 50 || angle < -90){
 		          SerialBT.println ("Angle out of range");
               angle = angle_dup;
-	         }
-            else{
-		            angle_dup = angle;
+	         } else {
+		          angle_dup = angle;
 	          }
         }
 

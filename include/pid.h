@@ -19,8 +19,8 @@ private:
         float max;
         float beta;
         float pOnEKp;
-        float pOnMKp;
-        bool pON_M;
+        float pOnPVKp;
+        bool pON_PV;
         bool pON_E;
         
 

@@ -27,13 +27,10 @@ void PID::compute() {
     int16_t error = sp - in;
     integral += Ki*error;
 
-    if (pON_M) integral -= pOnMKp*inDiff;
+    if (pON_PV) integral -= pOnPVKp*inDiff;
 
-    if (integral > 235) {
-        integral = 235;
-    } else if (integral < 0) {
-        integral = 0;
-    }
+    if (integral > 235) { integral = 235; } 
+    else if (integral < 0) { integral = 0;}
 
     if (pON_E) out = pOnEKp*error;
     else out = 0;
@@ -60,7 +57,7 @@ void PID::SetGains(float kp, float ki, float kd, float b) {
     if (Kp<0 || Ki<0|| Kd<0 || beta<0 || beta>1) return;
     beta = b;
     pON_E = beta>0;
-    pON_M = beta<1;
+    pON_PV = beta<1;
 
     kp_d = kp; ki_d = ki; kd_d = kd;
     float s =  (float)T/1000;
@@ -68,7 +65,7 @@ void PID::SetGains(float kp, float ki, float kd, float b) {
     Kd = kd/s;
     Ki = ki*s;
     pOnEKp = beta * kp; 
-    pOnMKp = (1 - beta) * kp;
+    pOnPVKp = (1 - beta) * kp;
 }
 
 void PID::limitOutput(float Min, float Max) {
