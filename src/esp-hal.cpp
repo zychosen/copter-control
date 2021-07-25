@@ -4,7 +4,7 @@
  * ESP-32 HAL for I2C
  * 
  * Date: July 25, 2021
- * Authors: zychosen, nitishbhat09
+ * Authors: zychosen, nitishbhat09, ShreyasRkk
  * License: 0BSD
  */
 

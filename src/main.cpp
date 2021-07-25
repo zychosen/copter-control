@@ -4,7 +4,7 @@
  * Creating an RTOS to control a 1-DoF copter using the ESP32
  * 
  * Date: July 25, 2021
- * Authors: zychosen, nitishbhat09
+ * Authors: zychosen, nitishbhat09, ShreyasRkk
  * License: 0BSD
  */
 

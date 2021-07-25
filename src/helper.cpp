@@ -4,7 +4,7 @@
  * Creating helper functions to compute PID algorithm, set and access control parameters and limit PID output
  * 
  * Date: July 25, 2021
- * Authors: zychosen, nitishbhat09
+ * Authors: zychosen, nitishbhat09, ShreyasRkk
  * License: 0BSD
  */
 
