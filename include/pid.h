@@ -1,7 +1,15 @@
+/**
+ * 1-DoF Copter control
+ * 
+ * Header file for helper.cpp
+ * 
+ * Date: July 25, 2021
+ * Authors: zychosen, nitishbhat09
+ * License: 0BSD
+ */
+
 #ifndef PID__H
 #define PID__H
-
-#include <stdint.h>
 
 class PID {
 
@@ -17,6 +25,8 @@ private:
 
         float min;
         float max;
+        float maxInt;
+        float minInt;
         float beta;
         float pOnEKp;
         float pOnPVKp;
